@@ -49,3 +49,56 @@ OpenESC/
     └── BOM.md               # Bill of materials.
 
 ```
+## Getting Started
+
+### Prerequisites
+
+- **Arduino IDE**: You can download the [Arduino IDE here](https://www.arduino.cc/en/software).
+- **ATmega328P-based microcontroller** (e.g., Arduino Nano).
+- **BLDC Motor**: Ensure that your motor is compatible with open-loop ESCs.
+- **MOSFET Drivers**: This ESC requires an external driver such as the IR2110 for interfacing with the MOSFETs.
+
+### Installing
+
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/yourusername/OpenSourceESC.git
+   ```
+
+2. **Navigate to the Source Code**:
+   ```bash
+   cd OpenSourceESC/src/open_loop_esc/
+   ```
+
+3. **Open the Project in Arduino IDE**:
+   - Open the `.ino` file in Arduino IDE.
+   - Select the appropriate board and port in the IDE.
+
+4. **Upload the Code**:
+   - Upload the firmware to your Arduino-compatible microcontroller.
+
+## Results
+
+The open-loop ESC has been tested and verified to produce correct phase switching, stable operation, and is ready for use in various applications. Details of the tests can be found in the **docs/testing/** directory, along with oscilloscope captures and test logs.
+
+## Hardware
+
+- **PCB Design**: The PCB Gerber files and schematics can be found in the `hardware/` directory.
+- **Bill of Materials (BOM)**: A complete list of components is available in the `BOM.md` file.
+
+## Ongoing Work
+
+The following features and improvements are currently being developed on separate branches:
+- **BEMF-based Feedback Control**: Development of closed-loop ESC with back-EMF feedback is in progress on the `bemf_dev` branch.
+- **Current Sensing**: Adding support for current sensors to protect the ESC from overcurrent conditions.
+- **Advanced Field-Oriented Control (FOC)**: Future plans to implement FOC for smoother motor control.
+
+To stay updated on these developments, check out the [development branches]().
+
+## Contributing
+
+We welcome contributions from the community! If you’d like to help, please check the open issues or submit a pull request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
