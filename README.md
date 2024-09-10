@@ -1,5 +1,7 @@
 # OpenESC - Open Source Electronic Speed Controller
 
+![Cover Image Open ESC](/image/OpenESC.png)
+
 ## Project Overview
 
 **OpenESC** is an open-source Electronic Speed Controller (ESC) project for controlling Brushless DC (BLDC) motors. The goal is to provide a versatile and customizable ESC solution that is free for anyone to use and modify, making it a great alternative to proprietary ESC systems. This project will evolve from a basic open-loop controller to a more advanced closed-loop controller with Back-EMF (BEMF) feedback for improved performance.
@@ -106,8 +108,17 @@ To stay updated on these developments, check out the [development branches]().
 
 ## Contributing
 
-We welcome contributions from the community! If you’d like to help, please check the open issues or submit a pull request.
+We welcome contributions to improve OpenESC!
+
+Please read the **[Contributing Guidelines](CONTRIBUTING.md)** to get started. Whether it's bug reports, feature requests, or pull requests, we appreciate any help to make this project better!
+
+---
+
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Changelog
+
+For details about the project's version history, refer to the **[CHANGELOG.md](CHANGELOG.md)**.
