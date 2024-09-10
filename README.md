@@ -6,6 +6,37 @@
 
 **OpenESC** is an open-source Electronic Speed Controller (ESC) project for controlling Brushless DC (BLDC) motors. The goal is to provide a versatile and customizable ESC solution that is free for anyone to use and modify, making it a great alternative to proprietary ESC systems. This project will evolve from a basic open-loop controller to a more advanced closed-loop controller with Back-EMF (BEMF) feedback for improved performance.
 
+---
+
+[![Arduino][arduino-badge]][arduino]
+[![Nano][nano-badge]][nano]
+[![BLDC][bldc-badge]][bldc]
+[![Mosfet][mosfet-badge]][mosfet]
+[![Driver][driver-badge]][driver]
+[![Ubuntu22][ubuntu22-badge]][ubuntu22]
+[![Ubuntu20][ubuntu20-badge]][ubuntu20]
+
+![GitHubWorkflowStatus](https://img.shields.io/github/actions/workflow/status/sidharthmohannair/OpenESC/main.yml?logo=github&style=flat-square)
+[![GitHubcontributors](https://img.shields.io/github/contributors/sidharthmohannair/OpenESC?style=flat-square)](CONTRIBUTING.md)
+[![License](https://img.shields.io/github/license/sidharthmohannair/OpenESC?style=flat-square)](LICENSE)
+
+[arduino-badge]: https://img.shields.io/badge/Arduino-IDE-green?style=flat-square
+[arduino]: https://www.arduino.cc/
+[nano-badge]: https://img.shields.io/badge/Arduino-Nano-blue?style=flat-square
+[nano]: https://store.arduino.cc/arduino-nano
+[bldc-badge]: https://img.shields.io/badge/Motor-BLDC-orange?style=flat-square
+[bldc]: https://en.wikipedia.org/wiki/Brushless_DC_electric_motor
+[mosfet-badge]: https://img.shields.io/badge/MOSFET-IRF3205-blue?style=flat-square
+[mosfet]: https://www.vishay.com/docs/91298/91298.pdf
+[driver-badge]: https://img.shields.io/badge/Driver-IR2110-green?style=flat-square
+[driver]: https://www.infineon.com/dgdl/ir2110.pdf
+[ubuntu22-badge]: https://img.shields.io/badge/Ubuntu-22.04-orange?style=flat-square
+[ubuntu22]: https://releases.ubuntu.com/22.04/
+[ubuntu20-badge]: https://img.shields.io/badge/Ubuntu-20.04-orange?style=flat-square
+[ubuntu20]: https://releases.ubuntu.com/20.04/
+
+---
+
 ## 📚 Check out the Wiki for Documentation
 
 We've created an extensive [**Wiki**](https://github.com/sidharthmohannair/OpenESC/wiki) with detailed guides on:
