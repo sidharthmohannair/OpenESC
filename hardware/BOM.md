@@ -1,10 +1,25 @@
-#BOM
+# Bill of Materials (BOM)
 
-NAME	COMPONENTS TYPE	VALUE
-Capacitor	Cermic Capcitor	100nF
-capcitor	Electrolytic Capcitor	22uF
-Resistor	Fixed Resistor	10ohm
-Resistor	Fixed Resistor	10K
-Diode	Diode	UF4007
-Driver	Mosfet Driver	IR2110
-Mosfet	Mosfet	IRF3205
+| **Name**         | **Component Type**    | **Value/Part Number** |
+|------------------|-----------------------|-----------------------|
+| **Capacitor**    | Ceramic Capacitor      | 100nF                 |
+| **Capacitor**    | Electrolytic Capacitor | 22uF                  |
+| **Resistor**     | Fixed Resistor         | 10Ω                   |
+| **Resistor**     | Fixed Resistor         | 10KΩ                  |
+| **Diode**        | Fast Recovery Diode    | UF4007                |
+| **Driver**       | MOSFET Driver          | IR2110                |
+| **MOSFET**       | N-channel MOSFET       | IRF3205               |
+| **Microcontroller** | Arduino Nano        | -                     |
+| **Potentiometer**| Variable Resistor      | 10KΩ                  |
+
+## Notes:
+- **Capacitors**: The 100nF ceramic capacitors are used for decoupling, and the 22uF electrolytic capacitors are used for bootstrap or filtering purposes.
+- **Resistors**: The 10Ω resistor might be used for current limiting or gate resistance, and the 10KΩ resistor is likely a pull-down for MOSFET gates or other logic-level control.
+- **Diodes**: The UF4007 is a fast recovery diode, suitable for high-speed switching applications.
+- **Driver and MOSFET**: The IR2110 MOSFET driver controls the IRF3205 N-channel MOSFETs, which are used for switching high currents in the ESC circuit.
+- **Microcontroller**: The Arduino Nano is the main microcontroller, used for generating PWM signals and controlling the driver.
+- **Potentiometer**: A 10KΩ potentiometer is used for manual control of motor speed in the open-loop ESC version.
+
+---
+
+For more details on how these components are used, refer to the [schematics](schematic_diagram_v1.0.pdf).
