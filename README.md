@@ -44,7 +44,9 @@ We've created an extensive [**Wiki**](https://github.com/sidharthmohannair/OpenE
 - Testing and troubleshooting
 - How to contribute to the project
 
-[Go to the Wiki!](https://github.com/sidharthmohannair/OpenESC/wiki)
+### [Go to the Wiki! 📚](https://github.com/sidharthmohannair/OpenESC/wiki)
+
+
 
 ## Key Features
 
