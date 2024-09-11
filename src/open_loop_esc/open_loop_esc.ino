@@ -1,144 +1,94 @@
 /*
-Step 1: High A (UP_A) and Low B (LOW_B) are turned on.
-Step 2: High A (UP_A) and Low C (LOW_C) are turned on.
-Step 3: High B (UP_B) and Low C (LOW_C) are turned on.
-Step 4: High B (UP_B) and Low A (LOW_A) are turned on.
-Step 5: High C (UP_C) and Low A (LOW_A) are turned on.
-Step 6: High C (UP_C) and Low B (LOW_B) are turned on.
-//code is created by Sidharth Mohan
+  Version: v2.0
+  Author: Sidharth Mohan
+
+  This is the open-loop ESC code developed for BLDC motor control. It implements a 6-step commutation sequence
+  for the control of the high and low-side MOSFETs in an H-bridge configuration. 
+
+  Key Features:
+  - Open-loop control (no feedback).
+  - Dead time to avoid shoot-through (simultaneous ON state of high and low MOSFETs).
+  - Direct port manipulation for faster switching.
+
+  Connections:
+  - D9 (PB1) -> High-Side MOSFET A (UP_A)
+  - D10 (PB2) -> High-Side MOSFET B (UP_B)
+  - D11 (PB3) -> High-Side MOSFET C (UP_C)
+  - D4 (PD4) -> Low-Side MOSFET A (LOW_A)
+  - D3 (PD3) -> Low-Side MOSFET B (LOW_B)
+  - D2 (PD2) -> Low-Side MOSFET C (LOW_C)
+
+  Note: 
+  - COMMUTATION_DELAY defines the delay between each commutation step.
+  - DEAD_TIME defines the dead time to prevent simultaneous activation of high and low-side MOSFETs.
 */
 
-// Simple Open-Loop ESC Code for BLDC Motor (No Feedback)
-// Commutation Sequence: 6-Step, Open-Loop
+// Define bit masks for High-Side MOSFETs
+#define UP_A_MASK (1 << PORTB1) // D9 - High A (PB1)
+#define UP_B_MASK (1 << PORTB2) // D10 - High B (PB2)
+#define UP_C_MASK (1 << PORTB3) // D11 - High C (PB3)
 
-// Define PWM pins for High-Side MOSFETs
-#define UP_A 9  // D9 - High A
-#define UP_B 10 // D10 - High B
-#define UP_C 11 // D11 - High C
-
-// Define pins for Low-Side MOSFETs
-#define LOW_A 4  // D4 - Low A
-#define LOW_B 3  // D3 - Low B
-#define LOW_C 2  // D2 - Low C
+// Define bit masks for Low-Side MOSFETs
+#define LOW_A_MASK (1 << PORTD4) // D4 - Low A (PD4)
+#define LOW_B_MASK (1 << PORTD3) // D3 - Low B (PD3)
+#define LOW_C_MASK (1 << PORTD2) // D2 - Low C (PD2)
 
 // Define commutation delay (in microseconds) for open-loop control
 #define COMMUTATION_DELAY 500
 
 // Define dead time (in microseconds) to prevent shoot-through
-#define DEAD_TIME 0
+#define DEAD_TIME 2
 
 void setup() {
   // Set PWM and Low-Side pins as outputs
-  pinMode(UP_A, OUTPUT);
-  pinMode(UP_B, OUTPUT);
-  pinMode(UP_C, OUTPUT);
-
-  pinMode(LOW_A, OUTPUT);
-  pinMode(LOW_B, OUTPUT);
-  pinMode(LOW_C, OUTPUT);
+  DDRB |= UP_A_MASK | UP_B_MASK | UP_C_MASK; // Set PB1, PB2, PB3 as outputs (D9, D10, D11)
+  DDRD |= LOW_A_MASK | LOW_B_MASK | LOW_C_MASK; // Set PD4, PD3, PD2 as outputs (D4, D3, D2)
 
   // Initialize all outputs to LOW
-  digitalWrite(UP_A, LOW);
-  digitalWrite(UP_B, LOW);
-  digitalWrite(UP_C, LOW);
-  digitalWrite(LOW_A, LOW);
-  digitalWrite(LOW_B, LOW);
-  digitalWrite(LOW_C, LOW);
+  PORTB &= ~(UP_A_MASK | UP_B_MASK | UP_C_MASK); // Set PB1, PB2, PB3 (D9, D10, D11) LOW
+  PORTD &= ~(LOW_A_MASK | LOW_B_MASK | LOW_C_MASK); // Set PD4, PD3, PD2 (D4, D3, D2) LOW
 }
 
 void loop() {
   // Commutation Sequence: 6-Step Open-Loop
-
+  
   // Step 1: A+ B-
+  PORTB &= ~UP_B_MASK;                // Turn off High B (D10)
+  PORTD &= ~LOW_C_MASK;               // Turn off Low C (D2)
+  delayMicroseconds(DEAD_TIME);       // Add dead time
+  PORTB |= UP_A_MASK;                 // Turn on High A (D9)
+  PORTD |= LOW_B_MASK;                // Turn on Low B (D3)
+  delayMicroseconds(COMMUTATION_DELAY);
 
-  digitalWrite(UP_A, HIGH);
-  digitalWrite(UP_B, LOW);
-  digitalWrite(UP_C, LOW);
-  digitalWrite(LOW_A, LOW);
-  digitalWrite(LOW_B, HIGH);
-  digitalWrite(LOW_C, LOW);
-delayMicroseconds(COMMUTATION_DELAY);
   // Step 2: A+ C-
- digitalWrite(UP_A, HIGH);
-  digitalWrite(UP_B, LOW);
-  digitalWrite(UP_C, LOW);
-  digitalWrite(LOW_A, LOW);
-  digitalWrite(LOW_B, LOW);
-  digitalWrite(LOW_C, HIGH);
-delayMicroseconds(COMMUTATION_DELAY);
-  // Step 3: B+ C-
-  digitalWrite(UP_A, LOW);
-  digitalWrite(UP_B, HIGH);
-  digitalWrite(UP_C, LOW);
-  digitalWrite(LOW_A, LOW);
-  digitalWrite(LOW_B, LOW);
-  digitalWrite(LOW_C, HIGH);
+  PORTD &= ~LOW_B_MASK;               // Turn off Low B (D3)
+  delayMicroseconds(DEAD_TIME);       // Add dead time
+  PORTD |= LOW_C_MASK;                // Turn on Low C (D2)
+  delayMicroseconds(COMMUTATION_DELAY);
 
-delayMicroseconds(COMMUTATION_DELAY);
+  // Step 3: B+ C-
+  PORTB &= ~UP_A_MASK;                // Turn off High A (D9)
+  delayMicroseconds(DEAD_TIME);       // Add dead time
+  PORTB |= UP_B_MASK;                 // Turn on High B (D10)
+  delayMicroseconds(COMMUTATION_DELAY);
+
   // Step 4: B+ A-
-  digitalWrite(UP_A, LOW);
-  digitalWrite(UP_B, HIGH);
-  digitalWrite(UP_C, LOW);
-  digitalWrite(LOW_A, HIGH);
-  digitalWrite(LOW_B, LOW);
-  digitalWrite(LOW_C, LOW);
-delayMicroseconds(COMMUTATION_DELAY);
+  PORTD &= ~LOW_C_MASK;               // Turn off Low C (D2)
+  delayMicroseconds(DEAD_TIME);       // Add dead time
+  PORTD |= LOW_A_MASK;                // Turn on Low A (D4)
+  delayMicroseconds(COMMUTATION_DELAY);
 
   // Step 5: C+ A-
-  digitalWrite(UP_A, LOW);
-  digitalWrite(UP_B, LOW);
-  digitalWrite(UP_C, HIGH);
-  digitalWrite(LOW_A, HIGH);
-  digitalWrite(LOW_B, LOW);
-  digitalWrite(LOW_C, LOW);
-delayMicroseconds(COMMUTATION_DELAY);
+  PORTB &= ~UP_B_MASK;                // Turn off High B (D10)
+  delayMicroseconds(DEAD_TIME);       // Add dead time
+  PORTB |= UP_C_MASK;                 // Turn on High C (D11)
+  delayMicroseconds(COMMUTATION_DELAY);
 
   // Step 6: C+ B-
-  digitalWrite(UP_A, LOW);
-  digitalWrite(UP_B, LOW);
-  digitalWrite(UP_C, HIGH);
-  digitalWrite(LOW_A, LOW);
-  digitalWrite(LOW_B, HIGH);
-  digitalWrite(LOW_C, LOW);
-delayMicroseconds(COMMUTATION_DELAY);
-  
-  
-//  digitalWrite(UP_C, LOW);    // Turn off previous high
-//  digitalWrite(LOW_C, LOW);    // Turn off previous low
-//  digitalWrite(UP_A, HIGH);   // High A on
-//  //delayMicroseconds(DEAD_TIME); 
-//  digitalWrite(LOW_B, HIGH);   // Low B on
-//  delayMicroseconds(COMMUTATION_DELAY);
-//
-//  // Step 2: A+ C-
-//  digitalWrite(LOW_B, LOW);    // Low B off
-// // delayMicroseconds(DEAD_TIME); 
-//  digitalWrite(LOW_C, HIGH);   // Low C on
-//  delayMicroseconds(COMMUTATION_DELAY);
-//
-//  // Step 3: B+ C-
-//  digitalWrite(UP_A, LOW);    // High A off
-//  //delayMicroseconds(DEAD_TIME); 
-//  digitalWrite(UP_B, HIGH);   // High B on
-//  delayMicroseconds(COMMUTATION_DELAY);
-//
-//  // Step 4: B+ A-
-//  digitalWrite(LOW_C, LOW);    // Low C off
-// // delayMicroseconds(DEAD_TIME); 
-//  digitalWrite(LOW_A, HIGH);   // Low A on
-//  delayMicroseconds(COMMUTATION_DELAY);
-//
-//  // Step 5: C+ A-
-//  digitalWrite(UP_B, LOW);    // High B off
-// // delayMicroseconds(DEAD_TIME); 
-//  digitalWrite(UP_C, HIGH);   // High C on
-//  delayMicroseconds(COMMUTATION_DELAY);
-//
-//  // Step 6: C+ B-
-//  digitalWrite(LOW_A, LOW);    // Low A off
-// // delayMicroseconds(DEAD_TIME); 
-//  digitalWrite(LOW_B, HIGH);   // Low B on
-//  delayMicroseconds(COMMUTATION_DELAY);
+  PORTD &= ~LOW_A_MASK;               // Turn off Low A (D4)
+  delayMicroseconds(DEAD_TIME);       // Add dead time
+  PORTD |= LOW_B_MASK;                // Turn on Low B (D3)
+  delayMicroseconds(COMMUTATION_DELAY);
 
   // Repeat the sequence continuously in the loop
 }
