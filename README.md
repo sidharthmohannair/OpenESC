@@ -71,12 +71,12 @@ We've created an extensive [**Wiki**](https://github.com/sidharthmohannair/OpenE
 
 ## Roadmap
 
-1. **v1.0 | Open-Loop ESC**:
+1. **v2.0 | Open-Loop ESC**:
    - Basic BLDC control using open-loop commutation.
    - Adjustable commutation timing.
    - No feedback control.
 
-2. **v2.0 | Closed-Loop ESC with BEMF (ongoing work)**:
+2. **v3.0 | Closed-Loop ESC with BEMF (ongoing work)**:
    - Implement BEMF sensing for feedback control.
    - Improve performance and efficiency under varying load conditions.
 
