@@ -23,7 +23,7 @@ This document outlines the guidelines for contributing to the **OpenESC** projec
 1. Fork the repository.
 2. Clone your fork locally.
    ```
-   git clone https://github.com/your-username/OpenESC.git
+   git clone https://github.com/sidharthmohannair/OpenESC.git
    cd OpenESC
    ```
 3. Create a new branch for your work.
