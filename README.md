@@ -37,6 +37,18 @@
 
 ---
 
+<div align="center">
+  <h3 style="color:lightgreen;">🚀 Check out our latest release</h3>
+  <a href="https://github.com/sidharthmohannair/OpenESC/releases">
+    <strong>Latest release notes</strong>
+  </a>
+</div>
+
+<hr>
+
+
+
+
 ## 📚 Check out the Wiki for Documentation
 
 We've created an extensive [**Wiki**](https://github.com/sidharthmohannair/OpenESC/wiki) with detailed guides on:
