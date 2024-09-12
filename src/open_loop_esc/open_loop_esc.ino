@@ -1,14 +1,10 @@
 /*
-  Version: v2.0
+  Version: v2.1
   Author: Sidharth Mohan
 
-  This is the open-loop ESC code developed for BLDC motor control. It implements a 6-step commutation sequence
-  for the control of the high and low-side MOSFETs in an H-bridge configuration. 
-
-  Key Features:
-  - Open-loop control (no feedback).
-  - Dead time to avoid shoot-through (simultaneous ON state of high and low MOSFETs).
-  - Direct port manipulation for faster switching.
+  This version of the open-loop ESC code adds potentiometer-based speed control.
+  The potentiometer input adjusts the commutation delay dynamically, allowing
+  real-time speed control of the BLDC motor.
 
   Connections:
   - D9 (PB1) -> High-Side MOSFET A (UP_A)
@@ -17,78 +13,66 @@
   - D4 (PD4) -> Low-Side MOSFET A (LOW_A)
   - D3 (PD3) -> Low-Side MOSFET B (LOW_B)
   - D2 (PD2) -> Low-Side MOSFET C (LOW_C)
+  - Potentiometer connected to A1
 
-  Note: 
-  - COMMUTATION_DELAY defines the delay between each commutation step.
-  - DEAD_TIME defines the dead time to prevent simultaneous activation of high and low-side MOSFETs.
+  Note: The potentiometer value adjusts the speed of the motor by changing
+  the delay between commutation steps.
 */
 
-// Define bit masks for High-Side MOSFETs
-#define UP_A_MASK (1 << PORTB1) // D9 - High A (PB1)
-#define UP_B_MASK (1 << PORTB2) // D10 - High B (PB2)
-#define UP_C_MASK (1 << PORTB3) // D11 - High C (PB3)
-
-// Define bit masks for Low-Side MOSFETs
-#define LOW_A_MASK (1 << PORTD4) // D4 - Low A (PD4)
-#define LOW_B_MASK (1 << PORTD3) // D3 - Low B (PD3)
-#define LOW_C_MASK (1 << PORTD2) // D2 - Low C (PD2)
-
-// Define commutation delay (in microseconds) for open-loop control
-#define COMMUTATION_DELAY 500
-
-// Define dead time (in microseconds) to prevent shoot-through
+// Define the analog pin for the potentiometer
+#define pot A1
 #define DEAD_TIME 2
 
 void setup() {
   // Set PWM and Low-Side pins as outputs
-  DDRB |= UP_A_MASK | UP_B_MASK | UP_C_MASK; // Set PB1, PB2, PB3 as outputs (D9, D10, D11)
-  DDRD |= LOW_A_MASK | LOW_B_MASK | LOW_C_MASK; // Set PD4, PD3, PD2 as outputs (D4, D3, D2)
+  DDRB |= (1 << DDB1) | (1 << DDB2) | (1 << DDB3); // Set PB1 (D9), PB2 (D10), PB3 (D11) as outputs
+  DDRD |= (1 << DDD2) | (1 << DDD3) | (1 << DDD4); // Set PD2 (D2), PD3 (D3), PD4 (D4) as outputs
 
   // Initialize all outputs to LOW
-  PORTB &= ~(UP_A_MASK | UP_B_MASK | UP_C_MASK); // Set PB1, PB2, PB3 (D9, D10, D11) LOW
-  PORTD &= ~(LOW_A_MASK | LOW_B_MASK | LOW_C_MASK); // Set PD4, PD3, PD2 (D4, D3, D2) LOW
+  PORTB &= ~((1 << PORTB1) | (1 << PORTB2) | (1 << PORTB3)); // Set PB1, PB2, PB3 (D9, D10, D11) LOW
+  PORTD &= ~((1 << PORTD2) | (1 << PORTD3) | (1 << PORTD4)); // Set PD4, PD3, PD2 (D4, D3, D2) LOW
 }
 
 void loop() {
-  // Commutation Sequence: 6-Step Open-Loop
-  
+  int v_delay = analogRead(pot); // Read the potentiometer value
+  v_delay = map(v_delay, 0, 1023, 50, 2000); // Map the potentiometer value to the desired delay range
+
   // Step 1: A+ B-
-  PORTB &= ~UP_B_MASK;                // Turn off High B (D10)
-  PORTD &= ~LOW_C_MASK;               // Turn off Low C (D2)
+  PORTB &= ~(1 << PORTB3);            // Ensure UP_C (PB3, Pin 11) is LOW
   delayMicroseconds(DEAD_TIME);       // Add dead time
-  PORTB |= UP_A_MASK;                 // Turn on High A (D9)
-  PORTD |= LOW_B_MASK;                // Turn on Low B (D3)
-  delayMicroseconds(COMMUTATION_DELAY);
+  PORTB |= (1 << PORTB1);             // Set UP_A (PB1, Pin 9) HIGH
+  PORTD |= (1 << PORTD3);             // Set LOW_B (PD3, Pin 3) HIGH
+  delayMicroseconds(v_delay);
 
   // Step 2: A+ C-
-  PORTD &= ~LOW_B_MASK;               // Turn off Low B (D3)
+  PORTD &= ~(1 << PORTD3);            // Set LOW_B (PD3, Pin 3) LOW
   delayMicroseconds(DEAD_TIME);       // Add dead time
-  PORTD |= LOW_C_MASK;                // Turn on Low C (D2)
-  delayMicroseconds(COMMUTATION_DELAY);
+  PORTD |= (1 << PORTD2);             // Set LOW_C (PD2, Pin 2) HIGH
+  delayMicroseconds(v_delay);
 
   // Step 3: B+ C-
-  PORTB &= ~UP_A_MASK;                // Turn off High A (D9)
+  PORTB &= ~(1 << PORTB1);            // Set UP_A (PB1, Pin 9) LOW
   delayMicroseconds(DEAD_TIME);       // Add dead time
-  PORTB |= UP_B_MASK;                 // Turn on High B (D10)
-  delayMicroseconds(COMMUTATION_DELAY);
+  PORTB |= (1 << PORTB2);             // Set UP_B (PB2, Pin 10) HIGH
+  delayMicroseconds(v_delay);
 
   // Step 4: B+ A-
-  PORTD &= ~LOW_C_MASK;               // Turn off Low C (D2)
+  PORTD &= ~(1 << PORTD2);            // Set LOW_C (PD2, Pin 2) LOW
   delayMicroseconds(DEAD_TIME);       // Add dead time
-  PORTD |= LOW_A_MASK;                // Turn on Low A (D4)
-  delayMicroseconds(COMMUTATION_DELAY);
+  PORTD |= (1 << PORTD4);             // Set LOW_A (PD4, Pin 4) HIGH
+  delayMicroseconds(v_delay);
 
   // Step 5: C+ A-
-  PORTB &= ~UP_B_MASK;                // Turn off High B (D10)
+  PORTB &= ~(1 << PORTB2);            // Set UP_B (PB2, Pin 10) LOW
   delayMicroseconds(DEAD_TIME);       // Add dead time
-  PORTB |= UP_C_MASK;                 // Turn on High C (D11)
-  delayMicroseconds(COMMUTATION_DELAY);
+  PORTB |= (1 << PORTB3);             // Set UP_C (PB3, Pin 11) HIGH
+  delayMicroseconds(v_delay);
 
   // Step 6: C+ B-
-  PORTD &= ~LOW_A_MASK;               // Turn off Low A (D4)
+  PORTD &= ~(1 << PORTD4);            // Set LOW_A (PD4, Pin 4) LOW
   delayMicroseconds(DEAD_TIME);       // Add dead time
-  PORTD |= LOW_B_MASK;                // Turn on Low B (D3)
-  delayMicroseconds(COMMUTATION_DELAY);
+  PORTD |= (1 << PORTD3);             // Set LOW_B (PD3, Pin 3) HIGH
+  delayMicroseconds(v_delay);
 
   // Repeat the sequence continuously in the loop
 }
