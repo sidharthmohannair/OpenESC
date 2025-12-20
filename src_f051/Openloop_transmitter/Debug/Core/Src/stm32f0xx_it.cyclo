@@ -1,0 +1,5 @@
+../Core/Src/stm32f0xx_it.c:69:6:NMI_Handler	1
+../Core/Src/stm32f0xx_it.c:84:6:HardFault_Handler	1
+../Core/Src/stm32f0xx_it.c:99:6:SVC_Handler	1
+../Core/Src/stm32f0xx_it.c:112:6:PendSV_Handler	1
+../Core/Src/stm32f0xx_it.c:125:6:SysTick_Handler	1
