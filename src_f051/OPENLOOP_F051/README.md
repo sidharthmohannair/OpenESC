@@ -1,5 +1,4 @@
-README.txt
- Created on: Dec 20, 2025
+Created on: Dec 20, 2025
      Author: AISWARYA BABU,MUHAMMED AFSAL
      # STM32F051 BLDC Motor Controller with 6-Step Commutation
 
