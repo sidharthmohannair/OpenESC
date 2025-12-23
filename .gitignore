@@ -19,20 +19,25 @@ Desktop.ini
 *.out
 *.log
 *.lst
+*.su
+*.cyclo
 
 ##################################################
 # STM32 (CubeIDE / HAL / Make / CMake)
 ##################################################
-.metadata/
-.settings/
-.project
-.cproject
+# Build directories
 Debug/
 Release/
 build/
 cmake-build-*/
 
-# Keep .ioc files for hardware configuration!
+# IDE project files
+.metadata/
+.settings/
+.project
+.cproject
+
+# Keep .ioc files for hardware configuration
 # Only ignore:
 *.mxproject
 
@@ -54,7 +59,6 @@ arduino_cache_*/
 sdkconfig
 sdkconfig.old
 sdkconfig.defaults
-build/
 managed_components/
 dependencies.lock
 
@@ -75,7 +79,6 @@ libdeps/
 
 # CLion / JetBrains
 .idea/
-cmake-build-*/
 
 # Eclipse
 *.launch
@@ -110,3 +113,20 @@ eeprom_backup.bin
 # Documentation Build
 ##################################################
 docs/_build/
+
+##################################################
+# STM32-Specific (Additional)
+##################################################
+# Linker generated files
+*.list
+*.map
+
+# Build artifacts from Make
+objects.list
+objects.mk
+sources.mk
+makefile
+subdir.mk
+
+# STM32 Flash files (keep linker scripts)
+# *.ld files should NOT be ignored

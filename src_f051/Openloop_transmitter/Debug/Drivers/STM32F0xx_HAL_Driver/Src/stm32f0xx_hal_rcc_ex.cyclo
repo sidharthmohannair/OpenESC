@@ -1,3 +1,0 @@
-../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_rcc_ex.c:102:19:HAL_RCCEx_PeriphCLKConfig	15
-../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_rcc_ex.c:268:6:HAL_RCCEx_GetPeriphCLKConfig	1
-../Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_rcc_ex.c:368:10:HAL_RCCEx_GetPeriphCLKFreq	26
