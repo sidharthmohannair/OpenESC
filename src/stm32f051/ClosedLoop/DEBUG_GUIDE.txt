@@ -1,0 +1,501 @@
+================================================================================
+  BLDC CLOSED-LOOP CONTROL - DEBUGGING GUIDE
+  Architecture: Following AM32 Reference Implementation
+================================================================================
+
+HARDWARE SETUP REQUIREMENTS:
+================================================================================
+
+1. COMPARATOR INPUTS (CRITICAL):
+   
+   PA1 (COMP1+) → Motor Phase A through resistor divider:
+   
+        Motor Phase A ----[ 10kΩ ]---- PA1 ----[ 10kΩ ]---- GND
+   
+   PA5 (COMP1-) → Virtual Neutral / Reference Voltage:
+   
+        Vbus ----[ 10kΩ ]---- PA5 ----[ 10kΩ ]---- GND
+   
+   This creates Vbus/2 reference (~1.65V if Vbus = 3.3V logic level)
+   
+   ⚠️ WITHOUT THESE CONNECTIONS, COMPARATOR WILL NOT WORK!
+
+2. MOTOR CONNECTIONS:
+   - Phase A: PA8 (high-side PWM) + PA7 (low-side GPIO)
+   - Phase B: PA9 (high-side PWM) + PB0 (low-side GPIO)
+   - Phase C: PA10 (high-side PWM) + PB1 (low-side GPIO)
+
+3. RC INPUT:
+   - PA6 (TIM3_CH1) connected to RC receiver signal
+
+4. DEBUG LED:
+   - PC13 (onboard LED)
+
+
+TIMER ARCHITECTURE VERIFICATION:
+================================================================================
+
+Timer Role Map (Must Match AM32):
+
+┌─────────┬──────────────────────┬────────────┬─────────────────────┐
+│ Timer   │ Function             │ Prescaler  │ Tick Period         │
+├─────────┼──────────────────────┼────────────┼─────────────────────┤
+│ TIM1    │ PWM Generation       │ 0          │ 20.8 ns (48MHz)     │
+│ TIM2    │ ZC Interval Measure  │ 47         │ 1 µs                │
+│ TIM3    │ RC Input Capture     │ 47         │ 1 µs                │
+│ TIM14   │ Commutation Schedule │ 47         │ 1 µs                │
+└─────────┴──────────────────────┴────────────┴─────────────────────┘
+
+Key Difference from Your Old Code:
+  ✅ TIM2 is NOW dedicated to zero-crossing timing (resets on each ZC)
+  ❌ OLD: Used TIM3->CNT for ZC timing (caused overflow issues)
+
+
+DEBUGGER WATCH VARIABLES - ADD THESE TO LIVE WATCH:
+================================================================================
+
+/* Copy these variable names into your debugger watch window */
+
+Core Status Variables:
+  startup_step_count          // Should go 0→60 during startup
+  closed_loop_enabled         // Should change to 1 after 60 steps
+  current_step                // Should cycle 0→5 continuously
+  motor_running               // 1 when motor should be spinning
+
+Timing Variables:
+  commutation_interval        // Motor period in µs (should adapt to speed)
+  thiszctime                  // Latest ZC timestamp
+  advance_time                // Calculated 30° advance time
+
+Counter Variables (Primary Diagnostics):
+  zc_detected_count           // Total comparator interrupts
+  valid_zc_count              // ZC that passed ALL filters
+  zc_filtered_early_count     // Rejected: too early after commutation
+  zc_filtered_unstable_count  // Rejected: BEMF not stable
+  tim14_fire_count            // Actual commutations performed
+  zc_timeout_count            // How many times timeout occurred
+
+RC Input:
+  rc_pulse_width              // Should be 1000-2000 µs
+  rc_signal_valid             // Should be 1 when RC connected
+  current_duty                // Mapped PWM duty cycle
+  commutation_delay           // Startup delay (2-10 ms)
+
+
+EXPECTED BEHAVIOR - STEP BY STEP:
+================================================================================
+
+PHASE 1: POWER-ON
+─────────────────────────────────────────────────────────────────────────
+What Happens:
+  - LED flashes briefly (system init)
+  - All motor phases OFF
+  - Waiting for RC signal
+
+Watch Variables:
+  startup_step_count = 0
+  closed_loop_enabled = 0
+  motor_running = 0
+  rc_signal_valid = 0
+  All counters = 0
+
+Action:
+  ✅ Connect RC receiver
+  ✅ Set throttle to minimum
+
+
+PHASE 2: RC SIGNAL DETECTED
+─────────────────────────────────────────────────────────────────────────
+What Happens:
+  - RC pulse captured
+  - Motor still OFF (throttle too low)
+
+Watch Variables:
+  rc_pulse_width = 1000-1100 µs
+  rc_signal_valid = 1
+  motor_running = 0
+  current_duty = 0 (below threshold)
+
+Action:
+  ✅ Slowly increase throttle above 1100 µs
+
+
+PHASE 3: OPEN-LOOP STARTUP (First 60 Steps)
+─────────────────────────────────────────────────────────────────────────
+What Happens:
+  - Motor starts spinning in open-loop
+  - Fixed delay between commutations
+  - Comparator starts detecting BEMF
+  - LED stays solid
+
+Watch Variables:
+  ┌──────────────────────┬────────────────┬──────────────────────┐
+  │ Variable             │ Expected Value │ Notes                │
+  ├──────────────────────┼────────────────┼──────────────────────┤
+  │ motor_running        │ 1              │ Motor active         │
+  │ startup_step_count   │ 0 → 60         │ Increments steadily  │
+  │ closed_loop_enabled  │ 0              │ Still open-loop      │
+  │ current_step         │ 0 → 5 (repeat) │ Cycles continuously  │
+  │ commutation_delay    │ 2-10 ms        │ Based on throttle    │
+  │ zc_detected_count    │ 50-300         │ Comparator active    │
+  │ valid_zc_count       │ 0              │ Filtered out (normal)│
+  │ tim14_fire_count     │ 0              │ Not used yet         │
+  └──────────────────────┴────────────────┴──────────────────────┘
+
+Expected Sounds:
+  - Motor should spin smoothly
+  - Speed proportional to throttle
+  - No stuttering or cogging
+
+⚠️ TROUBLESHOOTING:
+  If startup_step_count stuck at 0:
+    → Check RC signal (rc_signal_valid should be 1)
+    → Check throttle is above 1100 µs
+  
+  If motor doesn't spin but count increases:
+    → Hardware issue (phases not connected)
+    → Check phase outputs with oscilloscope
+  
+  If zc_detected_count = 0:
+    → Comparator not working
+    → Check PA1, PA5 connections
+    → Verify COMP1 is enabled
+
+
+PHASE 4: TRANSITION TO CLOSED-LOOP (Step 60)
+─────────────────────────────────────────────────────────────────────────
+What Happens:
+  - After 60th commutation
+  - System switches to closed-loop
+  - LED flashes 3 times quickly (transition indicator)
+  - TIM2 counter resets
+  - Interrupts take over commutation
+
+Watch Variables:
+  startup_step_count = 60 (stops incrementing)
+  closed_loop_enabled = 1 (changes from 0)
+  commutation_interval = 2000-10000 µs (initial estimate)
+
+Action:
+  ⚠️ CRITICAL MOMENT - Watch closely!
+
+
+PHASE 5: CLOSED-LOOP OPERATION (Steady State)
+─────────────────────────────────────────────────────────────────────────
+What Happens:
+  - Zero-crossing interrupts control commutation
+  - TIM14 fires to perform commutation
+  - Motor adapts to load changes
+  - Smooth continuous rotation
+
+Watch Variables - REAL-TIME MONITORING:
+  ┌───────────────────────────┬─────────────┬──────────────────────┐
+  │ Variable                  │ Good Value  │ Bad Value (Problem)  │
+  ├───────────────────────────┼─────────────┼──────────────────────┤
+  │ closed_loop_enabled       │ 1           │ 0 (fell back)        │
+  │ valid_zc_count            │ ↑↑↑ Rising  │ Stuck/slow           │
+  │ tim14_fire_count          │ ↑↑↑ Rising  │ Stuck                │
+  │ zc_detected_count         │ ↑↑↑ Fast    │ 0 or very slow       │
+  │ zc_filtered_early_count   │ < 5%        │ > 50% (timing off)   │
+  │ zc_filtered_unstable_count│ < 10%       │ > 50% (noise)        │
+  │ commutation_interval      │ 1000-15000  │ Stuck at one value   │
+  │ zc_timeout_count          │ 0           │ > 0 (keeps timing out)│
+  └───────────────────────────┴─────────────┴──────────────────────┘
+
+Counter Relationship (MUST MATCH):
+  
+  valid_zc_count ≈ tim14_fire_count
+  
+  If tim14_fire_count = 0 but valid_zc_count > 0:
+    → TIM14 interrupt not firing
+    → Check NVIC configuration
+  
+  If valid_zc_count = 0 but zc_detected_count > 0:
+    → All ZC getting filtered
+    → Check zc_filtered_* counters to see why
+
+Filter Ratio (Health Check):
+  
+  Acceptance Rate = valid_zc_count / zc_detected_count
+  
+  ✅ GOOD: > 30% (7 out of 10 ZC accepted)
+  ⚠️ POOR: 10-30% (high filtering)
+  ❌ BAD: < 10% (almost all rejected)
+
+Expected Sounds:
+  - Smooth continuous rotation
+  - Speed adjusts with throttle
+  - No sudden stops or restarts
+
+
+PHASE 6: MOTOR STOPPED (Return to Idle)
+─────────────────────────────────────────────────────────────────────────
+What Happens:
+  - Reduce throttle below 1100 µs
+  - Motor stops
+  - All counters stop incrementing
+  - System ready for restart
+
+Watch Variables:
+  motor_running = 0
+  closed_loop_enabled = 0
+  startup_step_count = 0 (reset for next start)
+  All counters pause (don't reset)
+
+
+DIAGNOSTIC SCENARIOS:
+================================================================================
+
+SCENARIO A: Motor Stops After 60 Steps
+─────────────────────────────────────────────────────────────────────────
+Symptoms:
+  - Spins fine in open-loop (0-60 steps)
+  - LED flashes (transition occurs)
+  - Motor coasts to stop
+  - Timeout counter increases
+
+Check These Variables:
+  1. closed_loop_enabled = ? (should be 1)
+  2. valid_zc_count = ? (should increase)
+  3. tim14_fire_count = ? (should increase)
+  4. zc_detected_count = ? (should be high)
+
+DIAGNOSIS TABLE:
+  ┌────────────────────┬────────────────┬─────────────────────────┐
+  │ valid_zc_count     │ tim14_fire     │ Problem                 │
+  ├────────────────────┼────────────────┼─────────────────────────┤
+  │ 0                  │ 0              │ No ZC detected          │
+  │ > 0                │ 0              │ TIM14 not firing        │
+  │ > 0                │ > 0 (matches)  │ Should be working! (?)  │
+  └────────────────────┴────────────────┴─────────────────────────┘
+
+If valid_zc_count = 0:
+  → Check zc_filtered_early_count
+    High? → Timing issue, commutation_interval wrong
+  
+  → Check zc_filtered_unstable_count
+    High? → Noise/bad BEMF signal, check PA1 connection
+
+If tim14_fire_count = 0 but valid_zc = increasing:
+  → TIM14 interrupt not enabled
+  → Check NVIC_EnableIRQ(TIM14_IRQn) called
+  → Check TIM14 interrupt handler compiling
+
+
+SCENARIO B: Motor Stutters/Jerks in Closed-Loop
+─────────────────────────────────────────────────────────────────────────
+Symptoms:
+  - Motor runs but roughly
+  - Periodic stuttering
+  - Speed unstable
+
+Check These Variables:
+  1. zc_filtered_early_count / zc_detected_count ratio
+     → If > 50%, timing is off
+  
+  2. zc_filtered_unstable_count / zc_detected_count ratio
+     → If > 50%, BEMF signal noisy
+  
+  3. commutation_interval variance
+     → Should change smoothly, not jump wildly
+
+Fixes:
+  - Reduce filter_level from 3 to 1 (line 59)
+  - Check motor phase connections
+  - Add capacitor to PA1 (100pF to ground)
+
+
+SCENARIO C: Random Timeouts (zc_timeout_count Increases)
+─────────────────────────────────────────────────────────────────────────
+Symptoms:
+  - Motor runs then stops randomly
+  - LED flashes rapidly (timeout indication)
+  - Restarts in open-loop
+
+Check These Variables:
+  1. thiszctime value when timeout occurs
+  2. commutation_interval when timeout occurs
+  3. Check if valid_zc_count still increasing
+
+Diagnosis:
+  If valid_zc stopping:
+    → Load too high, motor slowing down
+    → Increase startup duty cycle
+  
+  If valid_zc still increasing:
+    → Timeout threshold too low
+    → Change 50000 to 100000 in line 232
+
+
+OSCILLOSCOPE VERIFICATION (If Available):
+================================================================================
+
+Signal 1: PA1 (Comparator Input)
+  - Should see BEMF waveform during motor operation
+  - Trapezoidal shape with zero-crossings
+  - Frequency = motor electrical frequency
+  - Amplitude increases with speed
+
+Signal 2: PC13 (LED - Optional Debug)
+  - Can connect to spare GPIO for comp state
+  - Square wave at motor electrical frequency
+
+Signal 3: PA8/PA9/PA10 (Phase PWM Outputs)
+  - 20kHz PWM visible
+  - Duty cycle changes with throttle
+  - Phases should be 120° apart
+
+Signal 4: TIM14 Trigger (Use spare GPIO)
+  - Add debug line in TIM14 interrupt:
+    LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_14);
+  - Should see pulse every commutation
+
+
+COMPLETE EXPECTED VALUE TABLE - CLOSED-LOOP MODE:
+================================================================================
+
+Throttle: 1200 µs (Low Speed)
+  commutation_interval: 8000-12000 µs
+  commutation_delay: 8-10 ms
+  current_duty: 600-800
+  valid_zc_count: Increasing ~100 per second
+  zc_detected_count: Increasing ~300 per second
+  zc_filtered_early_count: < 50 per second
+  tim14_fire_count: Increasing ~100 per second
+  Filter acceptance: ~33%
+
+Throttle: 1500 µs (Medium Speed)
+  commutation_interval: 4000-6000 µs
+  commutation_delay: 5-6 ms
+  current_duty: 1200-1400
+  valid_zc_count: Increasing ~200 per second
+  zc_detected_count: Increasing ~600 per second
+  zc_filtered_early_count: < 100 per second
+  tim14_fire_count: Increasing ~200 per second
+  Filter acceptance: ~33%
+
+Throttle: 1800 µs (High Speed)
+  commutation_interval: 2000-3000 µs
+  commutation_delay: 2-3 ms
+  current_duty: 1800-2000
+  valid_zc_count: Increasing ~400 per second
+  zc_detected_count: Increasing ~1200 per second
+  zc_filtered_early_count: < 200 per second
+  tim14_fire_count: Increasing ~400 per second
+  Filter acceptance: ~33%
+
+
+KEY SUCCESS INDICATORS:
+================================================================================
+
+✅ SUCCESS - System is Working:
+  1. startup_step_count reaches 60
+  2. closed_loop_enabled changes to 1
+  3. valid_zc_count increases continuously
+  4. tim14_fire_count matches valid_zc_count (±5%)
+  5. Motor runs smoothly without restarts
+  6. zc_timeout_count stays at 0
+  7. Filter acceptance rate 20-50%
+
+❌ FAILURE - Debug Needed:
+  1. startup_step_count stuck < 60
+     → Open-loop problem, check RC/hardware
+  
+  2. closed_loop_enabled stays 0 after 60
+     → Code logic error (shouldn't happen)
+  
+  3. valid_zc_count = 0 in closed-loop
+     → Zero-crossing detection failing
+     → Check comparator hardware
+  
+  4. valid_zc_count > 0 but tim14_fire_count = 0
+     → TIM14 interrupt not working
+     → Check interrupt configuration
+  
+  5. zc_timeout_count keeps increasing
+     → Timing synchronization lost
+     → Check commutation_interval calculation
+
+
+STEP-BY-STEP TEST PROCEDURE:
+================================================================================
+
+TEST 1: Verify Hardware Connections
+  □ Measure PA5 voltage: Should be ~1.65V (Vbus/2)
+  □ Connect motor phases to ESC
+  □ Connect RC receiver to PA6
+  □ Power on, LED should flash briefly
+
+TEST 2: Verify RC Input
+  □ Set throttle to min (1000 µs)
+  □ Check debugger: rc_signal_valid = 1
+  □ Check debugger: rc_pulse_width = 1000-1100
+  □ Increase throttle
+  □ Check debugger: rc_pulse_width increases
+
+TEST 3: Verify Open-Loop Startup
+  □ Set throttle to 1200 µs
+  □ Motor should start spinning
+  □ Watch: startup_step_count 0 → 60
+  □ Motor speed should be smooth
+  □ zc_detected_count should be > 0
+
+TEST 4: Verify Closed-Loop Transition
+  □ Keep motor running
+  □ Watch for LED 3-flash
+  □ Check: closed_loop_enabled = 1
+  □ Motor should continue spinning
+  □ Check: valid_zc_count starts increasing
+  □ Check: tim14_fire_count starts increasing
+
+TEST 5: Verify Closed-Loop Stability
+  □ Let motor run for 10 seconds
+  □ Check: zc_timeout_count = 0
+  □ Increase throttle → motor speeds up
+  □ Decrease throttle → motor slows down
+  □ Check: commutation_interval adapts
+
+TEST 6: Verify Restart Capability
+  □ Reduce throttle to minimum
+  □ Motor stops
+  □ Increase throttle again
+  □ Motor should restart smoothly
+
+
+WHAT TO SEND BACK TO ME:
+================================================================================
+
+Format your response like this:
+
+HARDWARE SETUP:
+  PA1 connection: [Connected to motor phase A through divider / Not connected]
+  PA5 connection: [Connected to Vbus/2 / Not connected]
+  Motor phases: [All connected / Some missing]
+
+TEST RESULTS:
+
+Phase 3 (Open-Loop):
+  startup_step_count: [value when stopped]
+  Motor spinning: [Yes / No]
+  zc_detected_count: [value]
+
+Phase 4 (Transition):
+  LED flashed 3 times: [Yes / No]
+  closed_loop_enabled: [0 / 1]
+
+Phase 5 (Closed-Loop):
+  valid_zc_count: [value after 5 seconds]
+  tim14_fire_count: [value after 5 seconds]
+  zc_detected_count: [value after 5 seconds]
+  zc_filtered_early_count: [value]
+  zc_filtered_unstable_count: [value]
+  zc_timeout_count: [value]
+  commutation_interval: [value]
+  Motor behavior: [Running smoothly / Stuttering / Stopped / Other]
+
+SPECIFIC PROBLEMS:
+  [Describe what's not working]
+
+
+With this information, I can pinpoint EXACTLY what's wrong!
+================================================================================
